@@ -16,11 +16,11 @@ See `demo.js`
 ---
 
 ## Template Structure
-A template file (`template.json`) consists of:
+A template parameter consists of:
 - **`settings`**: Defines global settings (e.g., number of rows, headers, index field).
 - **`template`**: Defines the fields and their values or auto-generation rules.
 
-### Example `template.json`
+### Example Template Object
 ```json
 {
     "settings": {
