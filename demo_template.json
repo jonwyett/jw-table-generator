@@ -1,0 +1,31 @@
+{
+    "settings": {
+        "rows": 25,
+        "includeHeaders": true   
+    },
+    "template": {
+        "pefix": {
+            "list": ["Mr.", "Mrs.", "Ms.", "Dr."]
+        },
+        "First Name": {
+            "autoGenerate": {
+                "type": "library",
+                "value": "firstName"
+            }
+        },
+        "Last Name": {
+            "autoGenerate": {
+                "type": "library",
+                "value": "lastName"
+            }
+        },
+        "foo": {
+            "autoGenerate": {
+                "type": "library",
+                "value": "foo"
+            }
+        }
+    }
+    
+        
+}
