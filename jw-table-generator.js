@@ -253,6 +253,11 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = TableGenerator;
 }
 
+// Export as a global variable if in a browser context.
+if (typeof window !== "undefined") {
+  window.TableGenerator = TableGenerator;
+}
+
 
 // Static property for the default library.
 // Users can assign their default library data here.

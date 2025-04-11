@@ -199,6 +199,15 @@ A **composite** field is built using multiple parts:
 
 Your patterns can contain static values, library lookups, values from a list, random numbers and random character sequences. Make sure any fields used in your composite pattern has already been generated.
 
+Specifically you may use:
+- **`static`**: Any character string.
+- **`library`**: A library lookup.
+- **`number`**: A number between `min` and `max`.
+- **`random`**: A sequence of random characters from `characters` of length `length`.
+- **`list`**: A value from an array of values.
+- **`field`**: A previously generated field.
+
+
 ---
 
 ## Example Output (`output.json`)
@@ -208,7 +217,6 @@ Your patterns can contain static values, library lookups, values from a list, ra
     [100, "Alice", "Doe", 34, "XH3P2Z9Q", "(415) 873-3298", "Alice.Doe@example.com"]
 ]
 ```
-📌 **Auto-generated values appear as expected!**
 
 ---
 

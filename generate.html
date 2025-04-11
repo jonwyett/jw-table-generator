@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Table Generator Interface</title>
+  <!-- Tailwind CSS from CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Modal styling */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(17, 24, 39, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal-hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="container mx-auto p-4">
+    <!-- Settings Section -->
+    <div class="bg-white p-4 shadow rounded mb-6">
+      <h2 class="text-2xl font-bold mb-4">Global Settings</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Number of rows -->
+        <div>
+          <label class="block font-semibold mb-1" for="rows">Rows</label>
+          <input id="rows" type="number" value="25" class="w-full border rounded px-2 py-1" />
+        </div>
+        <!-- Include Headers -->
+        <div>
+          <label class="block font-semibold mb-1" for="includeHeaders">Include Headers</label>
+          <input id="includeHeaders" type="checkbox" checked class="h-5 w-5" />
+        </div>
+        <!-- Optional Index Field Name -->
+        <div>
+          <label class="block font-semibold mb-1" for="indexName">Index Field Name (optional)</label>
+          <input id="indexName" type="text" placeholder="e.g., ID" class="w-full border rounded px-2 py-1" />
+        </div>
+        <!-- Optional Index Start -->
+        <div>
+          <label class="block font-semibold mb-1" for="indexStart">Index Start (optional)</label>
+          <input id="indexStart" type="number" placeholder="e.g., 1" class="w-full border rounded px-2 py-1" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Fields Section -->
+    <div class="bg-gray-50 p-4 shadow rounded mb-6">
+      <h2 class="text-2xl font-bold mb-4">Fields</h2>
+      <div id="fieldsContainer" class="space-y-4">
+        <!-- Field sections will be appended here -->
+      </div>
+      <button id="addFieldBtn" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+        Add Field
+      </button>
+    </div>
+
+    <!-- Output Section -->
+    <div class="bg-white p-4 shadow rounded mb-6">
+      <h2 class="text-2xl font-bold mb-4">Output</h2>
+      <div class="mb-4">
+        <label class="block font-semibold mb-1" for="templateOutput">Generated Template JSON</label>
+        <textarea id="templateOutput" rows="10" class="w-full border rounded px-2 py-1 font-mono"></textarea>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1" for="tableOutput">Table Data Output</label>
+        <textarea id="tableOutput" rows="10" class="w-full border rounded px-2 py-1 font-mono"></textarea>
+      </div>
+      <div class="mt-4 flex gap-4">
+        <button id="generateBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+          Generate
+        </button>
+        <button id="exportBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+          Export
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Composite (Pattern) Editor Modal -->
+  <div id="compositeModal" class="modal-overlay modal-hidden">
+    <div class="bg-white rounded-lg w-11/12 md:w-2/3 lg:w-1/2 p-4">
+      <h3 class="text-xl font-bold mb-4">Pattern Editor</h3>
+      
+      <!-- New Part Form -->
+      <div id="compositeNewPart">
+         <label for="newPartType" class="font-semibold">Select Part Type:</label>
+         <select id="newPartType" class="w-full border rounded px-2 py-1 mb-2">
+              <option value="">Choose Part Type</option>
+              <option value="library">Library</option>
+              <option value="static">Static</option>
+              <option value="field">Field</option>
+              <option value="list">List</option>
+              <option value="random">Random</option>
+              <option value="number">Number</option>
+         </select>
+         <div id="newPartOptions"></div>
+         <button id="addPartBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded mb-4">Add Part</button>
+      </div>
+      
+      <!-- Existing Parts List -->
+      <div class="mt-4">
+         <h4 class="text-lg font-semibold mb-2">Current Pattern Parts</h4>
+         <ul id="compositePartsList" class="list-disc pl-5"></ul>
+      </div>
+      
+      <!-- Modal Action Buttons -->
+      <div class="mt-4 flex justify-end gap-4">
+         <button id="cancelCompositeBtn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Cancel</button>
+         <button id="saveCompositeBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">Save Pattern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the jw-table-generator.js library -->
+  <script src="jw-table-generator.js"></script>
+  <!-- Main JavaScript -->
+  <script>
+    // ----------------------------
+    // Utility Functions & Globals
+    // ----------------------------
+    function createElement(tag, attrs = {}, innerHTML = "") {
+      const el = document.createElement(tag);
+      Object.entries(attrs).forEach(([key, val]) => {
+        el.setAttribute(key, val);
+      });
+      el.className = attrs.class || "";
+      el.innerHTML = innerHTML;
+      return el;
+    }
+
+    let fieldIdCounter = 0;
+    function getUniqueFieldId() {
+      return "field-" + (++fieldIdCounter);
+    }
+
+    // Globals for composite modal handling
+    let currentCompositeFieldId = "";
+    let currentCompositeParts = [];
+
+    // ----------------------------
+    // Field Section Creation
+    // ----------------------------
+    function createFieldSection() {
+      const fieldId = getUniqueFieldId();
+      const container = createElement("div", { class: "p-4 border rounded shadow-sm relative bg-gray-50 border-gray-300" }); //FIELD SECTION
+      container.id = fieldId;
+
+      // Field name
+      const nameLabel = createElement("label", { for: fieldId + "-name", class: "font-semibold block mb-1" }, "Field Name");
+      const nameInput = createElement("input", {
+        type: "text",
+        id: fieldId + "-name",
+        placeholder: "e.g., firstName",
+        class: "w-full border rounded px-2 py-1 mb-2"
+      });
+      
+      // Field type selector (List or Auto-Generate)
+      const typeLabel = createElement("label", { for: fieldId + "-type", class: "font-semibold block mb-1" }, "Field Type");
+      const typeSelect = createElement("select", {
+        id: fieldId + "-type",
+        class: "w-full border rounded px-2 py-1 mb-2"
+      });
+      typeSelect.innerHTML = `<option value="">Choose Data Type</option>
+        <option value="list">List</option>
+        <option value="autoGenerate">Auto-Generate</option>`;
+      
+      // Container for additional controls based on type selection
+      const extraControls = createElement("div", { id: fieldId + "-extra" });
+
+      // Append main controls
+      container.appendChild(nameLabel);
+      container.appendChild(nameInput);
+      container.appendChild(typeLabel);
+      container.appendChild(typeSelect);
+      container.appendChild(extraControls);
+
+      // Reordering and removal controls (Up/Down/Spacer/Delete)
+      const controlContainer = createElement("div", { class: "absolute top-2 right-2 flex items-center space-x-1" });
+      const moveUpBtn = createElement("button", { type: "button", title: "Move Up", class: "bg-gray-200 hover:bg-gray-300 rounded px-1" }, "▲");
+      const moveDownBtn = createElement("button", { type: "button", title: "Move Down", class: "bg-gray-200 hover:bg-gray-300 rounded px-1" }, "▼");
+
+      moveUpBtn.addEventListener("click", function() {
+        const prev = container.previousElementSibling;
+        if (prev) container.parentNode.insertBefore(container, prev);
+      });
+      moveDownBtn.addEventListener("click", function() {
+        const next = container.nextElementSibling;
+        if (next) container.parentNode.insertBefore(next, container);
+      });
+      
+      // Spacer to separate the delete button one button-width away.
+      const spacer = createElement("div", { class: "w-4" });
+      
+      // Delete button using the trash can Unicode icon.
+      const deleteBtn = createElement("button", { type: "button", title: "Remove Field", class: "bg-gray-200 hover:bg-red-600 rounded px-1" }, "❌");
+      deleteBtn.addEventListener("click", () => {
+        container.remove();
+      });
+      
+      controlContainer.appendChild(moveUpBtn);
+      controlContainer.appendChild(moveDownBtn);
+      controlContainer.appendChild(spacer);
+      controlContainer.appendChild(deleteBtn);
+      container.appendChild(controlContainer);
+
+      // Event listener for field type change.
+      typeSelect.addEventListener("change", function() {
+        extraControls.innerHTML = "";
+        if (this.value === "list") {
+          const listLabel = createElement("label", { for: fieldId + "-list", class: "font-semibold block mb-1" }, "List Values (JSON Array)");
+          const listTextarea = createElement("textarea", { id: fieldId + "-list", rows: "3", class: "w-full border rounded px-2 py-1" });
+          extraControls.appendChild(listLabel);
+          extraControls.appendChild(listTextarea);
+        } else if (this.value === "autoGenerate") {
+          const autoTypeLabel = createElement("label", { for: fieldId + "-autoType", class: "font-semibold block mb-1" }, "Auto-Generate Type");
+          const autoTypeSelect = createElement("select", {
+            id: fieldId + "-autoType",
+            class: "w-full border rounded px-2 py-1 mb-2"
+          });
+          autoTypeSelect.innerHTML = `<option value="">Choose AutoGenerate Type</option>
+            <option value="library">Library</option>
+            <option value="loremIpsum">loremIpsum</option>
+            <option value="number">Number</option>
+            <option value="random">Random</option>
+            <option value="composite">Composite</option>`;
+          extraControls.appendChild(autoTypeLabel);
+          extraControls.appendChild(autoTypeSelect);
+
+          const autoExtra = createElement("div", { id: fieldId + "-autoExtra" });
+          extraControls.appendChild(autoExtra);
+
+          autoTypeSelect.addEventListener("change", function() {
+            autoExtra.innerHTML = "";
+            const selectedType = this.value;
+            if (selectedType === "library") {
+              const libLabel = createElement("label", { for: fieldId + "-libVal", class: "font-semibold block mb-1" }, "Library Value");
+              const libSelect = createElement("select", { id: fieldId + "-libVal", class: "w-full border rounded px-2 py-1 mb-2" });
+              const libKeys = TableGenerator && TableGenerator.defaultLibrary ? Object.keys(TableGenerator.defaultLibrary) : [];
+              libSelect.innerHTML = `<option value="">Choose Library Value</option>` +
+                libKeys.map(key => `<option value="${key}">${key}</option>`).join("");
+              autoExtra.appendChild(libLabel);
+              autoExtra.appendChild(libSelect);
+            } else if (selectedType === "loremIpsum") {
+              const minLabel = createElement("label", { for: fieldId + "-loremMin", class: "font-semibold block mb-1" }, "Minimum Words");
+              const minInput = createElement("input", {
+                type: "number",
+                id: fieldId + "-loremMin",
+                placeholder: "e.g., 10",
+                class: "w-full border rounded px-2 py-1 mb-2"
+              });
+              const maxLabel = createElement("label", { for: fieldId + "-loremMax", class: "font-semibold block mb-1" }, "Maximum Words");
+              const maxInput = createElement("input", {
+                type: "number",
+                id: fieldId + "-loremMax",
+                placeholder: "e.g., 25",
+                class: "w-full border rounded px-2 py-1"
+              });
+              autoExtra.appendChild(minLabel);
+              autoExtra.appendChild(minInput);
+              autoExtra.appendChild(maxLabel);
+              autoExtra.appendChild(maxInput);
+            } else if (selectedType === "number") {
+              const minLabel = createElement("label", { for: fieldId + "-numMin", class: "font-semibold block mb-1" }, "Minimum Value");
+              const minInput = createElement("input", {
+                type: "number",
+                id: fieldId + "-numMin",
+                placeholder: "e.g., 1",
+                class: "w-full border rounded px-2 py-1 mb-2"
+              });
+              const maxLabel = createElement("label", { for: fieldId + "-numMax", class: "font-semibold block mb-1" }, "Maximum Value");
+              const maxInput = createElement("input", {
+                type: "number",
+                id: fieldId + "-numMax",
+                placeholder: "e.g., 100",
+                class: "w-full border rounded px-2 py-1"
+              });
+              autoExtra.appendChild(minLabel);
+              autoExtra.appendChild(minInput);
+              autoExtra.appendChild(maxLabel);
+              autoExtra.appendChild(maxInput);
+            } else if (selectedType === "random") {
+              const lenLabel = createElement("label", { for: fieldId + "-randLen", class: "font-semibold block mb-1" }, "Length");
+              const lenInput = createElement("input", {
+                type: "number",
+                id: fieldId + "-randLen",
+                placeholder: "e.g., 8",
+                class: "w-full border rounded px-2 py-1 mb-2"
+              });
+              const charLabel = createElement("label", { for: fieldId + "-randChars", class: "font-semibold block mb-1" }, "Characters");
+              const charInput = createElement("input", {
+                type: "text",
+                id: fieldId + "-randChars",
+                placeholder: "e.g., ABCDEFG0123456789",
+                class: "w-full border rounded px-2 py-1"
+              });
+              autoExtra.appendChild(lenLabel);
+              autoExtra.appendChild(lenInput);
+              autoExtra.appendChild(charLabel);
+              autoExtra.appendChild(charInput);
+            } else if (selectedType === "composite") {
+              const compContainer = document.createElement("div");
+              const addPatternBtn = document.createElement("button");
+              addPatternBtn.textContent = "Add Pattern";
+              addPatternBtn.className = "bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded mb-2";
+              addPatternBtn.addEventListener("click", function(){
+                openCompositeModal(fieldId);
+              });
+              const compDisplay = document.createElement("textarea");
+              compDisplay.id = fieldId + "-compDisplay";
+              compDisplay.rows = 3;
+              compDisplay.className = "w-full border rounded px-2 py-1";
+              if (!compDisplay.value.trim()) {
+                compDisplay.value = JSON.stringify({ patterns: [] }, null, 4);
+              }
+              autoExtra.appendChild(compContainer);
+              compContainer.appendChild(addPatternBtn);
+              compContainer.appendChild(compDisplay);
+            }
+          });
+        }
+      });
+
+      return container;
+    }
+
+    document.getElementById("addFieldBtn").addEventListener("click", function() {
+      const fieldsContainer = document.getElementById("fieldsContainer");
+      fieldsContainer.appendChild(createFieldSection());
+    });
+
+    // ----------------------------
+    // Composite Modal Functions (Pattern Editor)
+    // ----------------------------
+    function openCompositeModal(fieldId) {
+      currentCompositeFieldId = fieldId;
+      currentCompositeParts = [];
+      updateCompositePartsList();
+      document.getElementById("newPartType").value = "";
+      document.getElementById("newPartOptions").innerHTML = "";
+      showModal();
+    }
+
+    function updateCompositePartsList() {
+      const list = document.getElementById("compositePartsList");
+      list.innerHTML = "";
+      currentCompositeParts.forEach((part, index) => {
+        const li = document.createElement("li");
+        li.className = "mb-1 flex items-center justify-between";
+        li.innerHTML = `<span class="font-mono text-sm">${JSON.stringify(part)}</span>`;
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "bg-red-500 hover:bg-red-600 text-white px-2 py-1 text-sm rounded";
+        removeBtn.textContent = "🗑️";
+        removeBtn.addEventListener("click", function(){
+          currentCompositeParts.splice(index, 1);
+          updateCompositePartsList();
+        });
+        li.appendChild(removeBtn);
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("newPartType").addEventListener("change", function() {
+      const newPartOptions = document.getElementById("newPartOptions");
+      newPartOptions.innerHTML = "";
+      const selectedType = this.value;
+      if (!selectedType) return;
+      if (selectedType === "library") {
+        const label = createElement("label", { for: "newPartLib", class: "font-semibold block mb-1" }, "Library Value");
+        const select = createElement("select", { id: "newPartLib", class: "w-full border rounded px-2 py-1 mb-2" });
+        const libKeys = TableGenerator && TableGenerator.defaultLibrary ? Object.keys(TableGenerator.defaultLibrary) : [];
+        select.innerHTML = `<option value="">Choose Library Value</option>` +
+          libKeys.map(key => `<option value="${key}">${key}</option>`).join("");
+        newPartOptions.appendChild(label);
+        newPartOptions.appendChild(select);
+      } else if (selectedType === "static") {
+        const label = createElement("label", { for: "newPartStatic", class: "font-semibold block mb-1" }, "Static Text");
+        const input = createElement("input", { type: "text", id: "newPartStatic", class: "w-full border rounded px-2 py-1 mb-2", placeholder: "e.g., ," });
+        newPartOptions.appendChild(label);
+        newPartOptions.appendChild(input);
+      } else if (selectedType === "field") {
+        const label = createElement("label", { for: "newPartField", class: "font-semibold block mb-1" }, "Reference Field");
+        let fieldNames = [];
+        document.querySelectorAll("#fieldsContainer input[id$='-name']").forEach(input => {
+          if (input.value.trim()) fieldNames.push(input.value.trim());
+        });
+        const select = createElement("select", { id: "newPartField", class: "w-full border rounded px-2 py-1 mb-2" });
+        select.innerHTML = `<option value="">Choose Field</option>` +
+          fieldNames.map(name => `<option value="${name}">${name}</option>`).join("");
+        newPartOptions.appendChild(label);
+        newPartOptions.appendChild(select);
+      } else if (selectedType === "list") {
+        const label = createElement("label", { for: "newPartList", class: "font-semibold block mb-1" }, "List (JSON Array)");
+        const textarea = createElement("textarea", { id: "newPartList", rows: "2", class: "w-full border rounded px-2 py-1 mb-2", placeholder: 'e.g., ["a", "b", "c"]' });
+        newPartOptions.appendChild(label);
+        newPartOptions.appendChild(textarea);
+      } else if (selectedType === "random") {
+        const lenLabel = createElement("label", { for: "newPartRandLen", class: "font-semibold block mb-1" }, "Length");
+        const lenInput = createElement("input", { type: "number", id: "newPartRandLen", placeholder: "e.g., 8", class: "w-full border rounded px-2 py-1 mb-2" });
+        const charLabel = createElement("label", { for: "newPartRandChars", class: "font-semibold block mb-1" }, "Characters");
+        const charInput = createElement("input", { type: "text", id: "newPartRandChars", placeholder: "e.g., ABCDEFG0123456789", class: "w-full border rounded px-2 py-1 mb-2" });
+        newPartOptions.appendChild(lenLabel);
+        newPartOptions.appendChild(lenInput);
+        newPartOptions.appendChild(charLabel);
+        newPartOptions.appendChild(charInput);
+      } else if (selectedType === "number") {
+        const minLabel = createElement("label", { for: "newPartNumMin", class: "font-semibold block mb-1" }, "Minimum Value");
+        const minInput = createElement("input", { type: "number", id: "newPartNumMin", placeholder: "e.g., 1", class: "w-full border rounded px-2 py-1 mb-2" });
+        const maxLabel = createElement("label", { for: "newPartNumMax", class: "font-semibold block mb-1" }, "Maximum Value");
+        const maxInput = createElement("input", { type: "number", id: "newPartNumMax", placeholder: "e.g., 100", class: "w-full border rounded px-2 py-1 mb-2" });
+        newPartOptions.appendChild(minLabel);
+        newPartOptions.appendChild(minInput);
+        newPartOptions.appendChild(maxLabel);
+        newPartOptions.appendChild(maxInput);
+      }
+    });
+
+    document.getElementById("addPartBtn").addEventListener("click", function() {
+      const newPartType = document.getElementById("newPartType").value;
+      if (!newPartType) return alert("Please choose a part type.");
+      let newPart = { type: newPartType };
+      if (newPartType === "library") {
+        newPart.value = document.getElementById("newPartLib").value;
+      } else if (newPartType === "static") {
+        newPart.value = document.getElementById("newPartStatic").value;
+      } else if (newPartType === "field") {
+        newPart.value = document.getElementById("newPartField").value;
+      } else if (newPartType === "list") {
+        try {
+          newPart.value = JSON.parse(document.getElementById("newPartList").value);
+        } catch(e) {
+          newPart.value = document.getElementById("newPartList").value;
+        }
+      } else if (newPartType === "random") {
+        newPart.length = Number(document.getElementById("newPartRandLen").value);
+        newPart.characters = document.getElementById("newPartRandChars").value;
+      } else if (newPartType === "number") {
+        newPart.min = Number(document.getElementById("newPartNumMin").value);
+        newPart.max = Number(document.getElementById("newPartNumMax").value);
+      }
+      currentCompositeParts.push(newPart);
+      updateCompositePartsList();
+      document.getElementById("newPartType").value = "";
+      document.getElementById("newPartOptions").innerHTML = "";
+    });
+
+    function showModal() {
+      document.getElementById("compositeModal").classList.remove("modal-hidden");
+    }
+    function hideModal() {
+      document.getElementById("compositeModal").classList.add("modal-hidden");
+    }
+
+    document.getElementById("cancelCompositeBtn").addEventListener("click", function() {
+      hideModal();
+    });
+
+    document.getElementById("saveCompositeBtn").addEventListener("click", function() {
+      const newPattern = currentCompositeParts.slice();
+      const compDisplay = document.getElementById(currentCompositeFieldId + "-compDisplay");
+      let compJSON = { patterns: [] };
+      try {
+        compJSON = JSON.parse(compDisplay.value);
+      } catch(e) {}
+      compJSON.patterns.push(newPattern);
+      compDisplay.value = JSON.stringify(compJSON, null, 4);
+      hideModal();
+    });
+
+    // ----------------------------
+    // Generate and Export Functions
+    // ----------------------------
+    document.getElementById("generateBtn").addEventListener("click", function() {
+      const settings = {
+        rows: Number(document.getElementById("rows").value) || 25,
+        includeHeaders: document.getElementById("includeHeaders").checked
+      };
+      const indexName = document.getElementById("indexName").value.trim();
+      const indexStart = document.getElementById("indexStart").value.trim();
+      if (indexName !== "") {
+        settings.index = {
+          name: indexName,
+          start: indexStart !== "" ? Number(indexStart) : 1
+        };
+      }
+
+      const template = {};
+      const fieldContainers = document.getElementById("fieldsContainer").children;
+      for (let fieldDiv of fieldContainers) {
+        const fieldId = fieldDiv.id;
+        const fieldName = fieldDiv.querySelector(`#${fieldId}-name`).value.trim();
+        if (!fieldName) continue;
+        const fieldType = fieldDiv.querySelector(`#${fieldId}-type`).value;
+        if (fieldType === "list") {
+          const listVal = fieldDiv.querySelector(`#${fieldId}-list`).value.trim();
+          try {
+            template[fieldName] = { list: JSON.parse(listVal) };
+          } catch(e) {
+            template[fieldName] = { list: listVal };
+          }
+        } else if (fieldType === "autoGenerate") {
+          const autoType = fieldDiv.querySelector(`#${fieldId}-autoType`).value;
+          const autoObj = { type: autoType };
+          if (autoType === "library") {
+            autoObj.value = fieldDiv.querySelector(`#${fieldId}-libVal`).value;
+          } else if (autoType === "loremIpsum") {
+            autoObj.min = Number(fieldDiv.querySelector(`#${fieldId}-loremMin`).value);
+            autoObj.max = Number(fieldDiv.querySelector(`#${fieldId}-loremMax`).value);
+          } else if (autoType === "number") {
+            autoObj.min = Number(fieldDiv.querySelector(`#${fieldId}-numMin`).value);
+            autoObj.max = Number(fieldDiv.querySelector(`#${fieldId}-numMax`).value);
+          } else if (autoType === "random") {
+            autoObj.length = Number(fieldDiv.querySelector(`#${fieldId}-randLen`).value);
+            autoObj.characters = fieldDiv.querySelector(`#${fieldId}-randChars`).value.trim();
+          } else if (autoType === "composite") {
+            const compDisplay = fieldDiv.querySelector(`#${fieldId}-compDisplay`).value;
+            try {
+              autoObj.patterns = JSON.parse(compDisplay).patterns;
+            } catch(e) {
+              autoObj.patterns = compDisplay;
+            }
+          }
+          template[fieldName] = { autoGenerate: autoObj };
+        }
+      }
+      const completeTemplate = { settings, template };
+      document.getElementById("templateOutput").value = JSON.stringify(completeTemplate, null, 4);
+      try {
+        const generator = new TableGenerator();
+        const tableData = generator.generate(completeTemplate);
+        const tableString = tableData.map(row => JSON.stringify(row)).join("\n");
+        document.getElementById("tableOutput").value = tableString;
+      } catch (err) {
+        document.getElementById("tableOutput").value = "Error generating table: " + err;
+      }
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", function() {
+      const data = document.getElementById("tableOutput").value;
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
