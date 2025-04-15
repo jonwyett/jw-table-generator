@@ -77,6 +77,9 @@
         <button id="generateBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
           Generate
         </button>
+        <button id="quickGenerateBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
+          Quick Generate
+        </button>
         <button id="exportBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
           Export
         </button>
@@ -100,6 +103,7 @@
               <option value="list">List</option>
               <option value="random">Random</option>
               <option value="number">Number</option>
+              <option value="date">Date</option>
          </select>
          <div id="newPartOptions"></div>
          <button id="addPartBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded mb-4">Add Part</button>
@@ -230,6 +234,7 @@
             <option value="loremIpsum">loremIpsum</option>
             <option value="number">Number</option>
             <option value="random">Random</option>
+            <option value="date">Date</option>
             <option value="composite">Composite</option>`;
           extraControls.appendChild(autoTypeLabel);
           extraControls.appendChild(autoTypeSelect);
@@ -305,6 +310,37 @@
               autoExtra.appendChild(lenInput);
               autoExtra.appendChild(charLabel);
               autoExtra.appendChild(charInput);
+            } else if (selectedType === "date") {
+              const startLabel = createElement("label", { for: fieldId + "-dateStart", class: "font-semibold block mb-1" }, "Start Date (optional)");
+              const startInput = createElement("input", {
+                type: "text",
+                id: fieldId + "-dateStart",
+                placeholder: "e.g., 2020-01-01",
+                class: "w-full border rounded px-2 py-1 mb-2"
+              });
+              
+              const endLabel = createElement("label", { for: fieldId + "-dateEnd", class: "font-semibold block mb-1" }, "End Date (optional)");
+              const endInput = createElement("input", {
+                type: "text",
+                id: fieldId + "-dateEnd",
+                placeholder: "e.g., 2023-12-31",
+                class: "w-full border rounded px-2 py-1 mb-2"
+              });
+              
+              const formatLabel = createElement("label", { for: fieldId + "-dateFormat", class: "font-semibold block mb-1" }, "Format (optional)");
+              const formatInput = createElement("input", {
+                type: "text",
+                id: fieldId + "-dateFormat",
+                placeholder: "e.g., YYYY-MM-DD or UTC",
+                class: "w-full border rounded px-2 py-1"
+              });
+              
+              autoExtra.appendChild(startLabel);
+              autoExtra.appendChild(startInput);
+              autoExtra.appendChild(endLabel);
+              autoExtra.appendChild(endInput);
+              autoExtra.appendChild(formatLabel);
+              autoExtra.appendChild(formatInput);
             } else if (selectedType === "composite") {
               const compContainer = document.createElement("div");
               const addPatternBtn = document.createElement("button");
@@ -419,6 +455,22 @@
         newPartOptions.appendChild(minInput);
         newPartOptions.appendChild(maxLabel);
         newPartOptions.appendChild(maxInput);
+      } else if (selectedType === "date") {
+        const startLabel = createElement("label", { for: "newPartDateStart", class: "font-semibold block mb-1" }, "Start Date (optional)");
+        const startInput = createElement("input", { type: "text", id: "newPartDateStart", placeholder: "e.g., 2020-01-01", class: "w-full border rounded px-2 py-1 mb-2" });
+        
+        const endLabel = createElement("label", { for: "newPartDateEnd", class: "font-semibold block mb-1" }, "End Date (optional)");
+        const endInput = createElement("input", { type: "text", id: "newPartDateEnd", placeholder: "e.g., 2023-12-31", class: "w-full border rounded px-2 py-1 mb-2" });
+        
+        const formatLabel = createElement("label", { for: "newPartDateFormat", class: "font-semibold block mb-1" }, "Format (optional)");
+        const formatInput = createElement("input", { type: "text", id: "newPartDateFormat", placeholder: "e.g., YYYY-MM-DD or UTC", class: "w-full border rounded px-2 py-1" });
+        
+        newPartOptions.appendChild(startLabel);
+        newPartOptions.appendChild(startInput);
+        newPartOptions.appendChild(endLabel);
+        newPartOptions.appendChild(endInput);
+        newPartOptions.appendChild(formatLabel);
+        newPartOptions.appendChild(formatInput);
       }
     });
 
@@ -444,6 +496,14 @@
       } else if (newPartType === "number") {
         newPart.min = Number(document.getElementById("newPartNumMin").value);
         newPart.max = Number(document.getElementById("newPartNumMax").value);
+      } else if (newPartType === "date") {
+        const startDate = document.getElementById("newPartDateStart").value.trim();
+        const endDate = document.getElementById("newPartDateEnd").value.trim();
+        const format = document.getElementById("newPartDateFormat").value.trim();
+        
+        if (startDate) newPart.start = startDate;
+        if (endDate) newPart.end = endDate;
+        if (format) newPart.format = format;
       }
       currentCompositeParts.push(newPart);
       updateCompositePartsList();
@@ -477,6 +537,23 @@
     // ----------------------------
     // Generate and Export Functions
     // ----------------------------
+    document.getElementById("quickGenerateBtn").addEventListener("click", function() {
+      try {
+        const templateText = document.getElementById("templateOutput").value;
+        if (!templateText.trim()) {
+          alert("No template data available. Please generate a template first.");
+          return;
+        }
+        const template = JSON.parse(templateText);
+        const generator = new TableGenerator();
+        const tableData = generator.generate(template);
+        const tableString = tableData.map(row => JSON.stringify(row) + ",").join("\n");
+        document.getElementById("tableOutput").value = tableString;
+      } catch (err) {
+        document.getElementById("tableOutput").value = "Error generating table: " + err;
+      }
+    });
+
     document.getElementById("generateBtn").addEventListener("click", function() {
       const settings = {
         rows: Number(document.getElementById("rows").value) || 25,
@@ -519,6 +596,13 @@
           } else if (autoType === "random") {
             autoObj.length = Number(fieldDiv.querySelector(`#${fieldId}-randLen`).value);
             autoObj.characters = fieldDiv.querySelector(`#${fieldId}-randChars`).value.trim();
+          } else if (autoType === "date") {
+            const startDate = fieldDiv.querySelector(`#${fieldId}-dateStart`).value.trim();
+            const endDate = fieldDiv.querySelector(`#${fieldId}-dateEnd`).value.trim();
+            const format = fieldDiv.querySelector(`#${fieldId}-dateFormat`).value.trim();
+            if (startDate) autoObj.start = startDate;
+            if (endDate) autoObj.end = endDate;
+            if (format) autoObj.format = format;
           } else if (autoType === "composite") {
             const compDisplay = fieldDiv.querySelector(`#${fieldId}-compDisplay`).value;
             try {
@@ -535,7 +619,7 @@
       try {
         const generator = new TableGenerator();
         const tableData = generator.generate(completeTemplate);
-        const tableString = tableData.map(row => JSON.stringify(row)).join("\n");
+        const tableString = tableData.map(row => JSON.stringify(row) + ",").join("\n");
         document.getElementById("tableOutput").value = tableString;
       } catch (err) {
         document.getElementById("tableOutput").value = "Error generating table: " + err;
@@ -543,14 +627,39 @@
     });
 
     document.getElementById("exportBtn").addEventListener("click", function() {
-      const data = document.getElementById("tableOutput").value;
-      const blob = new Blob([data], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "data.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      try {
+        // Get the template from templateOutput
+        const templateText = document.getElementById("templateOutput").value;
+        if (!templateText.trim()) {
+          alert("No template data available to export. Please generate a template first.");
+          return;
+        }
+        
+        // Parse the template
+        const template = JSON.parse(templateText);
+        
+        // Create a new TableGenerator instance and generate the table
+        const generator = new TableGenerator();
+        const tableData = generator.generate(template);
+        
+        // Convert the table data to one row per line with proper JSON formatting
+        const jsonData = "[\n" + 
+          tableData.map((row, index) => 
+            "  " + JSON.stringify(row) + (index < tableData.length - 1 ? "," : "")
+          ).join("\n") + 
+        "\n]";
+        
+        // Create and trigger download
+        const blob = new Blob([jsonData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "table_data.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert("Error exporting data: " + err.message);
+      }
     });
   </script>
 </body>

@@ -1,0 +1,48 @@
+{
+  "settings": {
+    "rows": 50,
+    "includeHeaders": true
+  },
+  "template": {
+    "id": {
+      "autoGenerate": {
+        "type": "number",
+        "min": 1,
+        "max": 1000
+      }
+    },
+    "name": {
+      "autoGenerate": {
+        "type": "library",
+        "value": "fullName_common"
+      }
+    },
+    "date": {
+      "autoGenerate": {
+        "type": "date",
+        "start": "2000-01-01",
+        "end": "2025-01-01",
+        "format": "MMMM DD, YYYY"
+      }
+    },
+    "test": {
+            "autoGenerate": {
+                "type": "composite",
+                "patterns": [
+                    [
+                        {
+                            "type": "static",
+                            "value": "Date: "
+                        },
+                        {
+                            "type": "date",
+                            "start": "2000-01-01",
+                            "end": "2025-01-01",
+                            "format": "MMMM DD, YYYY"
+                        }
+                    ]
+                ]
+            }
+        }
+  }
+} 

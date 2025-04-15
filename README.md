@@ -206,7 +206,32 @@ Specifically you may use:
 - **`random`**: A sequence of random characters from `characters` of length `length`.
 - **`list`**: A value from an array of values.
 - **`field`**: A previously generated field.
+- **`date`**: A random date with optional parameters:
+  ```json
+  { 
+    "type": "date", 
+    "start": "2020-01-01", 
+    "end": "2023-12-31", 
+    "format": "YYYY-MM-DD" 
+  }
+  ```
+  This generates a random date between the specified start and end dates, formatted according to the format string. See the [date data type](#-date-random-date-generation) section for all available format tokens.
 
+#### **Example Composite with Date:**
+```json
+"Appointment": {
+    "autoGenerate": {
+        "type": "composite",
+        "patterns": [
+            [
+                { "type": "static", "value": "Appointment on " },
+                { "type": "date", "start": "2023-01-01", "end": "2023-12-31", "format": "dddd, MMMM DD, YYYY" }
+            ]
+        ]
+    }
+}
+```
+📌 Generates text like **"Appointment on Monday, January 15, 2023"** with a random date in the specified format.
 
 ---
 
@@ -247,6 +272,65 @@ Instead of a fixed number of words, you can specify **`min`** and **`max`** valu
 🔹 **Ensures varied, natural-looking text data.**  
 🔹 **Works well for generating notes, descriptions, or customer feedback fields.**  
 🔹 **No two generated texts will be identical.**
+
+---
+
+### 🔹 `date` (Random Date Generation)
+Generates **random dates** within a specified range with customizable formatting.
+
+```json
+"Birth Date": {
+    "autoGenerate": {
+        "type": "date",
+        "start": "1960-01-01",
+        "end": "2000-12-31",
+        "format": "YYYY-MM-DD"
+    }
+}
+```
+📌 **Generates a random date between January 1, 1960 and December 31, 2000 in YYYY-MM-DD format.**
+
+#### **Parameters:**
+- **`start`**: (Optional) The start date in a format that JavaScript's Date constructor can parse (e.g., "YYYY-MM-DD"). Defaults to Unix epoch (1970-01-01).
+- **`end`**: (Optional) The end date. Defaults to 5 years from the current date.
+- **`format`**: (Optional) The output format. If set to "UTC", returns the full UTC string. Otherwise, uses the custom format string.
+
+#### **Format Tokens:**
+| Token | Meaning | Example |
+|-------|---------|---------|
+| `YYYY` | 4-digit year | 2025 |
+| `YY` | 2-digit year | 25 |
+| `MMMM` | Full month name | April |
+| `MMM` | Abbreviated month name | Apr |
+| `MM` | 2-digit month | 04 |
+| `M` | 1 or 2-digit month | 4 |
+| `DD` | 2-digit day of month | 09 |
+| `D` | 1 or 2-digit day of month | 9 |
+| `dddd` | Full weekday name | Tuesday |
+| `ddd` | Abbreviated weekday name | Tue |
+| `HH` | 2-digit hour (24-hour clock) | 08 |
+| `H` | 1 or 2-digit hour (24-hour) | 8 |
+| `hh` | 2-digit hour (12-hour clock) | 01 |
+| `h` | 1 or 2-digit hour (12-hour) | 1 |
+| `mm` | 2-digit minutes | 03 |
+| `m` | 1 or 2-digit minutes | 3 |
+| `ss` | 2-digit seconds | 07 |
+| `s` | 1 or 2-digit seconds | 7 |
+| `A` | AM/PM | AM |
+| `a` | am/pm | am |
+
+#### **Example Formats:**
+```json
+"format": "YYYY-MM-DD"        // 2023-04-15
+"format": "MMM DD, YYYY"      // Apr 15, 2023
+"format": "dddd, MMMM DD"     // Saturday, April 15
+"format": "YYYY/MM/DD HH:mm"  // 2023/04/15 14:30
+"format": "UTC"               // Sat, 15 Apr 2023 14:30:00 GMT
+```
+
+🔹 **Perfect for generating realistic date fields like birth dates, hire dates, or appointment times.**  
+🔹 **Supports a wide range of date formats to match your application's needs.**  
+🔹 **Can be used both as a standalone autoGenerate type and within composite patterns.**
 
 ---
 

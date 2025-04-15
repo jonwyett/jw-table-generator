@@ -73,102 +73,232 @@ class TableGenerator {
    * @param {Array} errors - Array to accumulate error messages.
    * @returns {string} The generated value or an empty string on error.
    */
-  generateAutoValue(autoGenSettings, columnName, currentRow, fullTable, errors) {
-    if (!autoGenSettings.type) {
-      errors.push("Missing 'type' in autoGenerate for column '" + columnName + "'.");
-      return "";
-    }
-    if (autoGenSettings.type === "library") {
-      return this.getLibraryValue(autoGenSettings.value, columnName, errors);
-    }
-    if (autoGenSettings.type === "loremIpsum") {
-      if (typeof autoGenSettings.min !== "number" || typeof autoGenSettings.max !== "number") {
-        errors.push("'loremIpsum' type requires 'min' and 'max' values in column '" + columnName + "'.");
-        return "";
-      }
-      if (autoGenSettings.min > autoGenSettings.max) {
-        errors.push("'min' cannot be greater than 'max' in autoGenerate for column '" + columnName + "'.");
-        return "";
-      }
-      const wordCount = Math.floor(Math.random() * (autoGenSettings.max - autoGenSettings.min + 1)) + autoGenSettings.min;
-      return this.loremIpsum(wordCount);
-    }
-    if (autoGenSettings.type === "number") {
-      if (typeof autoGenSettings.min !== "number" || typeof autoGenSettings.max !== "number") {
-        errors.push("Invalid or missing 'min'/'max' in autoGenerate for column '" + columnName + "'.");
-        return "";
-      }
-      if (autoGenSettings.min > autoGenSettings.max) {
-        errors.push("'min' cannot be greater than 'max' in autoGenerate for column '" + columnName + "'.");
-        return "";
-      }
-      return Math.floor(Math.random() * (autoGenSettings.max - autoGenSettings.min + 1)) + autoGenSettings.min;
-    }
-    if (autoGenSettings.type === "random") {
-      if (!autoGenSettings.length || !autoGenSettings.characters) {
-        errors.push("'random' type requires 'length' and 'characters' in column '" + columnName + "'.");
-        return "";
-      }
-      let result = "";
-      for (let i = 0; i < autoGenSettings.length; i++) {
-        result += autoGenSettings.characters[Math.floor(Math.random() * autoGenSettings.characters.length)];
-      }
-      return result;
-    }
-    if (autoGenSettings.type === "composite") {
-      if (!Array.isArray(autoGenSettings.patterns) || autoGenSettings.patterns.length === 0) {
-        errors.push("'patterns' must be a non-empty array in autoGenerate for column '" + columnName + "'.");
-        return "";
-      }
-      const pattern = autoGenSettings.patterns[Math.floor(Math.random() * autoGenSettings.patterns.length)];
-      let result = "";
-      for (let k = 0; k < pattern.length; k++) {
-        const part = pattern[k];
-        if (!part.type) {
-          errors.push("Missing 'type' in pattern part for column '" + columnName + "'.");
-          return "";
-        }
-        if (part.type === "library") {
-          result += this.getLibraryValue(part.value, columnName, errors);
-        } else if (part.type === "static") {
-          result += part.value || "";
-        } else if (part.type === "field") {
-          const fieldIndex = fullTable[0] ? fullTable[0].indexOf(part.value) : -1;
-          if (fieldIndex === -1) {
-            errors.push("Referenced field '" + part.value + "' not found for column '" + columnName + "'.");
-            return "";
-          }
-          result += currentRow[fieldIndex] || "";
-        } else if (part.type === "list") {
-          result += part.value[Math.floor(Math.random() * part.value.length)];
-        } else if (part.type === "random") {
-          if (!part.length || !part.characters) {
-            errors.push("'random' part must have 'length' and 'characters' properties in column '" + columnName + "'.");
-            return "";
-          }
-          for (let j = 0; j < part.length; j++) {
-            result += part.characters[Math.floor(Math.random() * part.characters.length)];
-          }
-        } else if (part.type === "number") {
-          if (typeof part.min !== "number" || typeof part.max !== "number") {
-            errors.push("'number' part must have 'min' and 'max' properties in column '" + columnName + "'.");
-            return "";
-          }
-          if (part.min > part.max) {
-            errors.push("'min' cannot be greater than 'max' in number part for column '" + columnName + "'.");
-            return "";
-          }
-          result += Math.floor(Math.random() * (part.max - part.min + 1)) + part.min;
-        } else {
-          errors.push("Unsupported part type '" + part.type + "' in column '" + columnName + "'.");
-          return "";
-        }
-      }
-      return result;
-    }
-    errors.push("Unsupported autoGenerate type '" + autoGenSettings.type + "' for column '" + columnName + "'.");
+ // Inside your TableGenerator class, update the generateAutoValue method by adding a new branch for "date"
+generateAutoValue(autoGenSettings, columnName, currentRow, fullTable, errors) {
+  if (!autoGenSettings.type) {
+    errors.push("Missing 'type' in autoGenerate for column '" + columnName + "'.");
     return "";
   }
+  if (autoGenSettings.type === "library") {
+    return this.getLibraryValue(autoGenSettings.value, columnName, errors);
+  }
+  if (autoGenSettings.type === "loremIpsum") {
+    if (typeof autoGenSettings.min !== "number" || typeof autoGenSettings.max !== "number") {
+      errors.push("'loremIpsum' type requires 'min' and 'max' values in column '" + columnName + "'.");
+      return "";
+    }
+    if (autoGenSettings.min > autoGenSettings.max) {
+      errors.push("'min' cannot be greater than 'max' in autoGenerate for column '" + columnName + "'.");
+      return "";
+    }
+    const wordCount = Math.floor(Math.random() * (autoGenSettings.max - autoGenSettings.min + 1)) + autoGenSettings.min;
+    return this.loremIpsum(wordCount);
+  }
+  if (autoGenSettings.type === "number") {
+    if (typeof autoGenSettings.min !== "number" || typeof autoGenSettings.max !== "number") {
+      errors.push("Invalid or missing 'min'/'max' in autoGenerate for column '" + columnName + "'.");
+      return "";
+    }
+    if (autoGenSettings.min > autoGenSettings.max) {
+      errors.push("'min' cannot be greater than 'max' in autoGenerate for column '" + columnName + "'.");
+      return "";
+    }
+    return Math.floor(Math.random() * (autoGenSettings.max - autoGenSettings.min + 1)) + autoGenSettings.min;
+  }
+  if (autoGenSettings.type === "random") {
+    if (!autoGenSettings.length || !autoGenSettings.characters) {
+      errors.push("'random' type requires 'length' and 'characters' in column '" + columnName + "'.");
+      return "";
+    }
+    let result = "";
+    for (let i = 0; i < autoGenSettings.length; i++) {
+      result += autoGenSettings.characters[Math.floor(Math.random() * autoGenSettings.characters.length)];
+    }
+    return result;
+  }
+  if (autoGenSettings.type === "composite") {
+    if (!Array.isArray(autoGenSettings.patterns) || autoGenSettings.patterns.length === 0) {
+      errors.push("'patterns' must be a non-empty array in autoGenerate for column '" + columnName + "'.");
+      return "";
+    }
+    const pattern = autoGenSettings.patterns[Math.floor(Math.random() * autoGenSettings.patterns.length)];
+    let result = "";
+    for (let k = 0; k < pattern.length; k++) {
+      const part = pattern[k];
+      if (!part.type) {
+        errors.push("Missing 'type' in pattern part for column '" + columnName + "'.");
+        return "";
+      }
+      if (part.type === "library") {
+        result += this.getLibraryValue(part.value, columnName, errors);
+      } else if (part.type === "static") {
+        result += part.value || "";
+      } else if (part.type === "field") {
+        const fieldIndex = fullTable[0] ? fullTable[0].indexOf(part.value) : -1;
+        if (fieldIndex === -1) {
+          errors.push("Referenced field '" + part.value + "' not found for column '" + columnName + "'.");
+          return "";
+        }
+        result += currentRow[fieldIndex] || "";
+      } else if (part.type === "list") {
+        result += part.value[Math.floor(Math.random() * part.value.length)];
+      } else if (part.type === "random") {
+        if (!part.length || !part.characters) {
+          errors.push("'random' part must have 'length' and 'characters' properties in column '" + columnName + "'.");
+          return "";
+        }
+        let temp = "";
+        for (let j = 0; j < part.length; j++) {
+          temp += part.characters[Math.floor(Math.random() * part.characters.length)];
+        }
+        result += temp;
+      } else if (part.type === "number") {
+        if (typeof part.min !== "number" || typeof part.max !== "number") {
+          errors.push("'number' part must have 'min' and 'max' properties in column '" + columnName + "'.");
+          return "";
+        }
+        if (part.min > part.max) {
+          errors.push("'min' cannot be greater than 'max' in number part for column '" + columnName + "'.");
+          return "";
+        }
+        result += Math.floor(Math.random() * (part.max - part.min + 1)) + part.min;
+      } else if (part.type === "date") {
+        // Now support a nested date type in composite patterns:
+        result += this.generateDateValue(part, columnName, errors);
+      } else {
+        errors.push("Unsupported part type '" + part.type + "' in column '" + columnName + "'.");
+        return "";
+      }
+    }
+    return result;
+  }
+
+  // New branch for "date" type
+  if (autoGenSettings.type === "date") {
+    return this.generateDateValue(autoGenSettings, columnName, errors);
+  }
+  errors.push("Unsupported autoGenerate type '" + autoGenSettings.type + "' for column '" + columnName + "'.");
+  return "";
+}
+
+// New helper function to generate a random Date between "start" and "end"
+generateDateValue(autoGenSettings, columnName, errors) {
+  // Parse 'start' date (default: Unix epoch)
+  let startDate;
+  if (autoGenSettings.start) {
+    startDate = new Date(autoGenSettings.start);
+    if (isNaN(startDate.getTime())) {
+      errors.push("'start' parameter in date type for column '" + columnName + "' is not a valid date.");
+      return "";
+    }
+  } else {
+    startDate = new Date(0); // Unix epoch
+  }
+
+  // Parse 'end' date (default: 5 years from current date)
+  let endDate;
+  if (autoGenSettings.end) {
+    endDate = new Date(autoGenSettings.end);
+    if (isNaN(endDate.getTime())) {
+      errors.push("'end' parameter in date type for column '" + columnName + "' is not a valid date.");
+      return "";
+    }
+  } else {
+    let now = new Date();
+    endDate = new Date(now.getFullYear() + 5, now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  }
+
+  if (startDate.getTime() > endDate.getTime()) {
+    errors.push("'start' date is after 'end' date for column '" + columnName + "'.");
+    return "";
+  }
+
+  // Generate a random date within the interval
+  const randomTime = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
+  const randomDate = new Date(randomTime);
+
+  // Get the format. Default is "UTC" if not provided.
+  const format = autoGenSettings.format ? autoGenSettings.format : "UTC";
+
+  // If format is exactly "UTC", return the full UTC string.
+  if (format === "UTC") {
+    return randomDate.toUTCString();
+  } else {
+    // Otherwise, return the formatted date using a custom format
+    return this.formatDate(randomDate, format);
+  }
+}
+
+// New helper function to format the date based on a custom format string
+formatDate(date, formatString) {
+  const fullMonthNames = [ "January", "February", "March", "April", "May", "June",
+                           "July", "August", "September", "October", "November", "December" ];
+  const abbreviatedMonthNames = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+  const fullWeekdayNames = [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ];
+  const abbreviatedWeekdayNames = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
+  
+  // Helper function to pad numbers with leading zeros.
+  function pad(n, width) {
+    return n.toString().padStart(width, "0");
+  }
+  
+  // Define tokens and their corresponding handlers.
+  const tokens = [
+    { token: "YYYY", handler: d => d.getFullYear().toString() },
+    { token: "MMMM", handler: d => fullMonthNames[d.getMonth()] },
+    { token: "dddd", handler: d => fullWeekdayNames[d.getDay()] },
+    { token: "MMM",  handler: d => abbreviatedMonthNames[d.getMonth()] },
+    { token: "ddd",  handler: d => abbreviatedWeekdayNames[d.getDay()] },
+    { token: "YY",   handler: d => d.getFullYear().toString().slice(-2) },
+    { token: "MM",   handler: d => pad(d.getMonth() + 1, 2) },
+    { token: "DD",   handler: d => pad(d.getDate(), 2) },
+    { token: "HH",   handler: d => pad(d.getHours(), 2) },
+    { token: "hh",   handler: d => { let h = d.getHours() % 12; if (h === 0) h = 12; return pad(h, 2); } },
+    { token: "mm",   handler: d => pad(d.getMinutes(), 2) },
+    { token: "ss",   handler: d => pad(d.getSeconds(), 2) },
+    { token: "M",    handler: d => (d.getMonth() + 1).toString() },
+    { token: "D",    handler: d => d.getDate().toString() },
+    { token: "H",    handler: d => d.getHours().toString() },
+    { token: "h",    handler: d => { let h = d.getHours() % 12; if (h === 0) h = 12; return h.toString(); } },
+    { token: "m",    handler: d => d.getMinutes().toString() },
+    { token: "s",    handler: d => d.getSeconds().toString() },
+    { token: "A",    handler: d => d.getHours() < 12 ? "AM" : "PM" },
+    { token: "a",    handler: d => d.getHours() < 12 ? "am" : "pm" }
+  ];
+  
+  // Sort tokens in descending order of length to match the longest tokens first.
+  const sortedTokens = tokens.slice().sort((a, b) => b.token.length - a.token.length);
+  
+  let result = "";
+  let i = 0;
+  
+  // Process the format string one character at a time.
+  while (i < formatString.length) {
+    let matched = false;
+    
+    // Check if any token matches starting at the current position.
+    for (let j = 0; j < sortedTokens.length; j++) {
+      const tokenStr = sortedTokens[j].token;
+      if (formatString.substr(i, tokenStr.length) === tokenStr) {
+        result += sortedTokens[j].handler(date);
+        i += tokenStr.length; // Skip over the token
+        matched = true;
+        break;
+      }
+    }
+    
+    // If no token matched, add the literal character.
+    if (!matched) {
+      result += formatString[i];
+      i++;
+    }
+  }
+  
+  return result;
+}
+
+
 
   /**
    * Builds an error table from an array of error messages.
@@ -474,7 +604,7 @@ TableGenerator.defaultLibrary =
       "Western Hemisphere"
     ],
   "regions_abv": [
-      "AFR", "EAP", "EUR", "NEA", "SCA", "WHA"
+      "AF", "EAP", "EUR", "NEA", "SCA", "WHA"
   ],
   "jobTitle": [
       "Software Engineer", "Project Manager", "Data Analyst", 
