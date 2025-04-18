@@ -199,6 +199,39 @@ A **composite** field is built using multiple parts:
 
 Your patterns can contain static values, library lookups, values from a list, random numbers and random character sequences. Make sure any fields used in your composite pattern has already been generated.
 
+#### **Weighted Patterns**
+You can assign weights to patterns to control their frequency in the output:
+
+```json
+"Email": {
+    "autoGenerate": {
+        "type": "composite",
+        "patterns": [
+            {
+                "pattern": [
+                    { "type": "field", "value": "First Name" },
+                    { "type": "static", "value": "." },
+                    { "type": "field", "value": "Last Name" },
+                    { "type": "static", "value": "@" },
+                    { "type": "library", "value": "emailDomain" }
+                ],
+                "weight": 3
+            },
+            {
+                "pattern": [
+                    { "type": "field", "value": "First Name" },
+                    { "type": "random", "length": 2, "characters": "0123456789" },
+                    { "type": "static", "value": "@" },
+                    { "type": "library", "value": "emailDomain" }
+                ],
+                "weight": 1
+            }
+        ]
+    }
+}
+```
+📌 In this example, the first pattern (firstname.lastname@domain) will appear 3 times more often than the second pattern (firstname12@domain).
+
 Specifically you may use:
 - **`static`**: Any character string.
 - **`library`**: A library lookup.

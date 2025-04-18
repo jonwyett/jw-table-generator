@@ -66,20 +66,18 @@
     <div class="bg-white p-4 shadow rounded mb-6">
       <h2 class="text-2xl font-bold mb-4">Output</h2>
       <div class="mb-4">
-        <label class="block font-semibold mb-1" for="templateOutput">Generated Template JSON</label>
-        <textarea id="templateOutput" rows="10" class="w-full border rounded px-2 py-1 font-mono"></textarea>
+        <label for="templateOutput" class="font-semibold block mb-1">Template Output</label>
+        <div class="flex items-center gap-2 mb-2">
+          <button id="generateBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded">Generate</button>
+          <button id="reSyncBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded">Re-sync GUI</button>
+        </div>
+        <textarea id="templateOutput" rows="10" class="w-full border rounded px-2 py-1"></textarea>
       </div>
       <div>
         <label class="block font-semibold mb-1" for="tableOutput">Table Data Output</label>
         <textarea id="tableOutput" rows="10" class="w-full border rounded px-2 py-1 font-mono"></textarea>
       </div>
       <div class="mt-4 flex gap-4">
-        <button id="generateBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-          Generate
-        </button>
-        <button id="quickGenerateBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded">
-          Quick Generate
-        </button>
         <button id="exportBtn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
           Export
         </button>
@@ -91,6 +89,20 @@
   <div id="compositeModal" class="modal-overlay modal-hidden">
     <div class="bg-white rounded-lg w-11/12 md:w-2/3 lg:w-1/2 p-4">
       <h3 class="text-xl font-bold mb-4">Pattern Editor</h3>
+      
+      <!-- Pattern Name Input -->
+      <div id="patternNameContainer" class="mb-4">
+        <label for="patternName" class="font-semibold">Pattern Name (optional):</label>
+        <input type="text" id="patternName" class="w-full border rounded px-2 py-1 mb-2" placeholder="e.g., Standard Email Format">
+        <p class="text-sm text-gray-600">A name to help identify this pattern.</p>
+      </div>
+      
+      <!-- Pattern Weight Input -->
+      <div id="patternWeightContainer" class="mb-4">
+        <label for="patternWeight" class="font-semibold">Pattern Weight (optional):</label>
+        <input type="number" id="patternWeight" class="w-full border rounded px-2 py-1 mb-2" min="1" value="1" placeholder="Default: 1">
+        <p class="text-sm text-gray-600">Higher weights make this pattern more likely to be selected.</p>
+      </div>
       
       <!-- New Part Form -->
       <div id="compositeNewPart">
@@ -148,6 +160,7 @@
     // Globals for composite modal handling
     let currentCompositeFieldId = "";
     let currentCompositeParts = [];
+    let currentPatternIndex = -1; // Track which pattern is being edited
 
     // ----------------------------
     // Field Section Creation
@@ -356,8 +369,63 @@
               if (!compDisplay.value.trim()) {
                 compDisplay.value = JSON.stringify({ patterns: [] }, null, 4);
               }
+              
+              // Add a container for displaying existing patterns
+              const patternsContainer = document.createElement("div");
+              patternsContainer.id = fieldId + "-patternsContainer";
+              patternsContainer.className = "mt-2 mb-2";
+              
+              // Function to update the patterns display
+              const updatePatternsDisplay = function() {
+                patternsContainer.innerHTML = "";
+                try {
+                  const compJSON = JSON.parse(compDisplay.value);
+                  if (compJSON.patterns && compJSON.patterns.length > 0) {
+                    const patternsTitle = document.createElement("div");
+                    patternsTitle.className = "font-semibold mb-1";
+                    patternsTitle.textContent = "Existing Patterns:";
+                    patternsContainer.appendChild(patternsTitle);
+                    
+                    compJSON.patterns.forEach((patternObj, index) => {
+                      const pattern = patternObj.pattern || patternObj;
+                      const weight = patternObj.weight || 1;
+                      const name = patternObj.name || "";
+                      
+                      const patternItem = document.createElement("div");
+                      patternItem.className = "flex items-center mb-1 p-1 bg-gray-100 rounded";
+                      
+                      const patternText = document.createElement("span");
+                      patternText.className = "flex-grow text-sm";
+                      patternText.textContent = name 
+                        ? `Pattern ${index + 1}: ${name} (Weight: ${weight})` 
+                        : `Pattern ${index + 1} (Weight: ${weight})`;
+                      
+                      const editBtn = document.createElement("button");
+                      editBtn.textContent = "Edit";
+                      editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs ml-2";
+                      editBtn.addEventListener("click", function() {
+                        openCompositeModal(fieldId, index);
+                      });
+                      
+                      patternItem.appendChild(patternText);
+                      patternItem.appendChild(editBtn);
+                      patternsContainer.appendChild(patternItem);
+                    });
+                  }
+                } catch(e) {
+                  console.error("Error parsing composite JSON:", e);
+                }
+              };
+              
+              // Update patterns display when the textarea changes
+              compDisplay.addEventListener("input", updatePatternsDisplay);
+              
+              // Initial update
+              updatePatternsDisplay();
+              
               autoExtra.appendChild(compContainer);
               compContainer.appendChild(addPatternBtn);
+              compContainer.appendChild(patternsContainer);
               compContainer.appendChild(compDisplay);
             }
           });
@@ -375,9 +443,43 @@
     // ----------------------------
     // Composite Modal Functions (Pattern Editor)
     // ----------------------------
-    function openCompositeModal(fieldId) {
+    function openCompositeModal(fieldId, patternIndex = -1) {
       currentCompositeFieldId = fieldId;
+      currentPatternIndex = patternIndex;
       currentCompositeParts = [];
+      
+      // If editing an existing pattern, load it
+      if (patternIndex >= 0) {
+        const compDisplay = document.getElementById(fieldId + "-compDisplay");
+        try {
+          const compJSON = JSON.parse(compDisplay.value);
+          if (compJSON.patterns && compJSON.patterns[patternIndex]) {
+            const patternObj = compJSON.patterns[patternIndex];
+            currentCompositeParts = patternObj.pattern || patternObj;
+            
+            // Set the weight if it exists
+            if (patternObj.weight) {
+              document.getElementById("patternWeight").value = patternObj.weight;
+            } else {
+              document.getElementById("patternWeight").value = "1";
+            }
+            
+            // Set the name if it exists
+            if (patternObj.name) {
+              document.getElementById("patternName").value = patternObj.name;
+            } else {
+              document.getElementById("patternName").value = "";
+            }
+          }
+        } catch(e) {
+          console.error("Error parsing composite JSON:", e);
+        }
+      } else {
+        // Reset weight to default for new patterns
+        document.getElementById("patternWeight").value = "1";
+        document.getElementById("patternName").value = "";
+      }
+      
       updateCompositePartsList();
       document.getElementById("newPartType").value = "";
       document.getElementById("newPartOptions").innerHTML = "";
@@ -524,36 +626,188 @@
 
     document.getElementById("saveCompositeBtn").addEventListener("click", function() {
       const newPattern = currentCompositeParts.slice();
+      const patternWeight = document.getElementById("patternWeight").value;
+      const patternName = document.getElementById("patternName").value.trim();
       const compDisplay = document.getElementById(currentCompositeFieldId + "-compDisplay");
       let compJSON = { patterns: [] };
       try {
         compJSON = JSON.parse(compDisplay.value);
       } catch(e) {}
-      compJSON.patterns.push(newPattern);
+      
+      // Create a pattern object with weight if specified
+      const patternObj = {
+        pattern: newPattern
+      };
+      
+      // Only add weight if it's not the default value of 1
+      if (patternWeight && patternWeight !== "1") {
+        patternObj.weight = parseInt(patternWeight, 10);
+      }
+      
+      // Add name if provided
+      if (patternName) {
+        patternObj.name = patternName;
+      }
+      
+      // Update existing pattern or add new one
+      if (currentPatternIndex >= 0 && compJSON.patterns[currentPatternIndex]) {
+        compJSON.patterns[currentPatternIndex] = patternObj;
+      } else {
+        compJSON.patterns.push(patternObj);
+      }
+      
       compDisplay.value = JSON.stringify(compJSON, null, 4);
+      
+      // Update the patterns display
+      const patternsContainer = document.getElementById(currentCompositeFieldId + "-patternsContainer");
+      if (patternsContainer) {
+        const updatePatternsDisplay = function() {
+          patternsContainer.innerHTML = "";
+          try {
+            if (compJSON.patterns && compJSON.patterns.length > 0) {
+              const patternsTitle = document.createElement("div");
+              patternsTitle.className = "font-semibold mb-1";
+              patternsTitle.textContent = "Existing Patterns:";
+              patternsContainer.appendChild(patternsTitle);
+              
+              compJSON.patterns.forEach((patternObj, index) => {
+                const pattern = patternObj.pattern || patternObj;
+                const weight = patternObj.weight || 1;
+                const name = patternObj.name || "";
+                
+                const patternItem = document.createElement("div");
+                patternItem.className = "flex items-center mb-1 p-1 bg-gray-100 rounded";
+                
+                const patternText = document.createElement("span");
+                patternText.className = "flex-grow text-sm";
+                patternText.textContent = name 
+                  ? `Pattern ${index + 1}: ${name} (Weight: ${weight})` 
+                  : `Pattern ${index + 1} (Weight: ${weight})`;
+                
+                const editBtn = document.createElement("button");
+                editBtn.textContent = "Edit";
+                editBtn.className = "bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs ml-2";
+                editBtn.addEventListener("click", function() {
+                  openCompositeModal(currentCompositeFieldId, index);
+                });
+                
+                patternItem.appendChild(patternText);
+                patternItem.appendChild(editBtn);
+                patternsContainer.appendChild(patternItem);
+              });
+            }
+          } catch(e) {
+            console.error("Error updating patterns display:", e);
+          }
+        };
+        
+        updatePatternsDisplay();
+      }
+      
       hideModal();
+    });
+
+    // ----------------------------
+    // Re-sync Function
+    // ----------------------------
+    function recreateGUIFromTemplate(template) {
+      if (!template || !template.template) {
+        throw new Error("Invalid template format");
+      }
+
+      // Clear existing fields
+      document.getElementById("fieldsContainer").innerHTML = "";
+
+      // Set global settings
+      if (template.settings) {
+        document.getElementById("rows").value = template.settings.rows || 25;
+        document.getElementById("includeHeaders").checked = template.settings.includeHeaders || false;
+        if (template.settings.index) {
+          document.getElementById("indexName").value = template.settings.index.name || "";
+          document.getElementById("indexStart").value = template.settings.index.start || 1;
+        }
+      }
+
+      // Create fields for each template entry
+      Object.entries(template.template).forEach(([fieldName, fieldConfig]) => {
+        const fieldSection = createFieldSection();
+        document.getElementById("fieldsContainer").appendChild(fieldSection);
+        const fieldId = fieldSection.id;
+
+        // Set field name
+        fieldSection.querySelector(`#${fieldId}-name`).value = fieldName;
+
+        // Handle field type and configuration
+        if (fieldConfig.list) {
+          // List type
+          const typeSelect = fieldSection.querySelector(`#${fieldId}-type`);
+          typeSelect.value = "list";
+          typeSelect.dispatchEvent(new Event("change"));
+
+          const listInput = fieldSection.querySelector(`#${fieldId}-list`);
+          listInput.value = Array.isArray(fieldConfig.list) ? 
+            JSON.stringify(fieldConfig.list) : fieldConfig.list;
+        } else if (fieldConfig.autoGenerate) {
+          // Auto-generate type
+          const typeSelect = fieldSection.querySelector(`#${fieldId}-type`);
+          typeSelect.value = "autoGenerate";
+          typeSelect.dispatchEvent(new Event("change"));
+
+          const autoConfig = fieldConfig.autoGenerate;
+          const autoTypeSelect = fieldSection.querySelector(`#${fieldId}-autoType`);
+          autoTypeSelect.value = autoConfig.type;
+          autoTypeSelect.dispatchEvent(new Event("change"));
+
+          // Configure based on auto-generate type
+          switch (autoConfig.type) {
+            case "library":
+              fieldSection.querySelector(`#${fieldId}-libVal`).value = autoConfig.value;
+              break;
+            case "loremIpsum":
+              fieldSection.querySelector(`#${fieldId}-loremMin`).value = autoConfig.min;
+              fieldSection.querySelector(`#${fieldId}-loremMax`).value = autoConfig.max;
+              break;
+            case "number":
+              fieldSection.querySelector(`#${fieldId}-numMin`).value = autoConfig.min;
+              fieldSection.querySelector(`#${fieldId}-numMax`).value = autoConfig.max;
+              break;
+            case "random":
+              fieldSection.querySelector(`#${fieldId}-randLen`).value = autoConfig.length;
+              fieldSection.querySelector(`#${fieldId}-randChars`).value = autoConfig.characters;
+              break;
+            case "date":
+              if (autoConfig.start) fieldSection.querySelector(`#${fieldId}-dateStart`).value = autoConfig.start;
+              if (autoConfig.end) fieldSection.querySelector(`#${fieldId}-dateEnd`).value = autoConfig.end;
+              if (autoConfig.format) fieldSection.querySelector(`#${fieldId}-dateFormat`).value = autoConfig.format;
+              break;
+            case "composite":
+              const compDisplay = fieldSection.querySelector(`#${fieldId}-compDisplay`);
+              compDisplay.value = JSON.stringify({ patterns: autoConfig.patterns }, null, 4);
+              // Trigger the display update
+              compDisplay.dispatchEvent(new Event("input"));
+              break;
+          }
+        }
+      });
+    }
+
+    document.getElementById("reSyncBtn").addEventListener("click", function() {
+      try {
+        const templateText = document.getElementById("templateOutput").value;
+        if (!templateText.trim()) {
+          alert("No template data available to sync from. Please paste a valid template first.");
+          return;
+        }
+        const template = JSON.parse(templateText);
+        recreateGUIFromTemplate(template);
+      } catch (err) {
+        alert("Error syncing GUI from template: " + err.message);
+      }
     });
 
     // ----------------------------
     // Generate and Export Functions
     // ----------------------------
-    document.getElementById("quickGenerateBtn").addEventListener("click", function() {
-      try {
-        const templateText = document.getElementById("templateOutput").value;
-        if (!templateText.trim()) {
-          alert("No template data available. Please generate a template first.");
-          return;
-        }
-        const template = JSON.parse(templateText);
-        const generator = new TableGenerator();
-        const tableData = generator.generate(template);
-        const tableString = tableData.map(row => JSON.stringify(row) + ",").join("\n");
-        document.getElementById("tableOutput").value = tableString;
-      } catch (err) {
-        document.getElementById("tableOutput").value = "Error generating table: " + err;
-      }
-    });
-
     document.getElementById("generateBtn").addEventListener("click", function() {
       const settings = {
         rows: Number(document.getElementById("rows").value) || 25,
@@ -587,15 +841,19 @@
           const autoObj = { type: autoType };
           if (autoType === "library") {
             autoObj.value = fieldDiv.querySelector(`#${fieldId}-libVal`).value;
+            template[fieldName] = { autoGenerate: autoObj };
           } else if (autoType === "loremIpsum") {
             autoObj.min = Number(fieldDiv.querySelector(`#${fieldId}-loremMin`).value);
             autoObj.max = Number(fieldDiv.querySelector(`#${fieldId}-loremMax`).value);
+            template[fieldName] = { autoGenerate: autoObj };
           } else if (autoType === "number") {
             autoObj.min = Number(fieldDiv.querySelector(`#${fieldId}-numMin`).value);
             autoObj.max = Number(fieldDiv.querySelector(`#${fieldId}-numMax`).value);
+            template[fieldName] = { autoGenerate: autoObj };
           } else if (autoType === "random") {
             autoObj.length = Number(fieldDiv.querySelector(`#${fieldId}-randLen`).value);
             autoObj.characters = fieldDiv.querySelector(`#${fieldId}-randChars`).value.trim();
+            template[fieldName] = { autoGenerate: autoObj };
           } else if (autoType === "date") {
             const startDate = fieldDiv.querySelector(`#${fieldId}-dateStart`).value.trim();
             const endDate = fieldDiv.querySelector(`#${fieldId}-dateEnd`).value.trim();
@@ -603,15 +861,17 @@
             if (startDate) autoObj.start = startDate;
             if (endDate) autoObj.end = endDate;
             if (format) autoObj.format = format;
+            template[fieldName] = { autoGenerate: autoObj };
           } else if (autoType === "composite") {
             const compDisplay = fieldDiv.querySelector(`#${fieldId}-compDisplay`).value;
             try {
               autoObj.patterns = JSON.parse(compDisplay).patterns;
             } catch(e) {
-              autoObj.patterns = compDisplay;
+              autoObj.patterns = [];
+              console.error("Error parsing composite patterns:", e);
             }
+            template[fieldName] = { autoGenerate: autoObj };
           }
-          template[fieldName] = { autoGenerate: autoObj };
         }
       }
       const completeTemplate = { settings, template };

@@ -1,0 +1,19 @@
+{
+  "name": "jw-table-generator",
+  "version": "1.0.0",
+  "description": "Library for create tables of randomized data based on a template",
+  "main": "jw-table-generator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonwyett/jw-table-generator.git"
+  },
+  "author": "Jonathan Wyett",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jonwyett/jw-table-generator/issues"
+  },
+  "homepage": "https://github.com/jonwyett/jw-table-generator#readme"
+}
